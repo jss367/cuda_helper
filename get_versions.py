@@ -11,68 +11,45 @@ def get_version_via_command(cmd):
         return str(e)
 
 
-# Get Python version
-python_version = sys.version
-
-# Get TensorFlow version
-tensorflow_version = tf.__version__
-
-# # Get CUDA version
-# cuda_version = get_version_via_command("nvcc --version | grep release | awk '{print $6}' | cut -c2-")
-
-# Check CUDA version
-try:
-    cuda_version = subprocess.check_output(["nvcc", "--version"]).decode("utf-8").split("V")[-1].strip()
-    print("CUDA version:", cuda_version)
-except Exception as e:
-    print("Error getting CUDA version:", str(e))
+def get_python_version():
+    return sys.version
 
 
-# # Get cuDNN version
-# cudnn_version = get_version_via_command("cat /usr/local/cuda/include/cudnn.h | grep CUDNN_MAJOR -A 2")
-# if "No such file or directory" in cudnn_version:
-#     cudnn_version = "cuDNN not found."
+def get_tensorflow_version():
+    return tf.__version__
 
 
-# Check cuDNN version
-try:
-    cudnn_path = subprocess.check_output(["find", "/usr/", "-name", "cudnn.h"]).decode("utf-8").strip().split("\n")[0]
-    if cudnn_path:
-        cudnn_version = subprocess.check_output(["cat", cudnn_path, "|", "grep", "CUDNN_MAJOR", "-A", "2"]).decode(
-            "utf-8"
-        )
-        print(
-            "cuDNN version:",
-            cudnn_version.split("\n")[0].split()[-1]
-            + "."
-            + cudnn_version.split("\n")[1].split()[-1]
-            + "."
-            + cudnn_version.split("\n")[2].split()[-1],
-        )
+def get_cuda_version():
+    return get_version_via_command("nvcc --version | grep release | awk '{print $6}' | cut -c2-")
+
+
+def get_cudnn_version():
+    cudnn_path = get_version_via_command("find /usr/ -name 'cudnn.h'")
+    if "No such file or directory" not in cudnn_path:
+        cmd = f"grep CUDNN_MAJOR -A 2 {cudnn_path}"
+        cudnn_version_info = get_version_via_command(cmd).split("\n")
+        if len(cudnn_version_info) >= 3:
+            return (
+                "cuDNN version:"
+                f" {cudnn_version_info[0].split()[-1]}.{cudnn_version_info[1].split()[-1]}.{cudnn_version_info[2].split()[-1]}"
+            )
+        else:
+            return "Error retrieving cuDNN version details"
     else:
-        print("cuDNN not found!")
-except Exception as e:
-    print("Error getting cuDNN version:", str(e))
+        return "cuDNN not found or permission denied."
 
 
-# # Get NVIDIA driver version
-# nvidia_driver_version = get_version_via_command("nvidia-smi | grep -oP 'Driver Version: \K\d+\.\d+'")
-
-# Check NVIDIA driver version
-try:
-    nvidia_driver_version = (
-        subprocess.check_output(["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader,nounits"])
-        .decode("utf-8")
-        .strip()
-    )
-    print("NVIDIA Driver version:", nvidia_driver_version)
-except Exception as e:
-    print("Error getting NVIDIA driver version:", str(e))
+def get_nvidia_driver_version():
+    return get_version_via_command("nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits")
 
 
-# Print all versions
-print(f"Python version: {python_version}")
-print(f"TensorFlow version: {tensorflow_version}")
-print(f"CUDA version: {cuda_version}")
-print(f"{cudnn_version}")  # This will print major, minor, and patch version of cuDNN
-print(f"NVIDIA Driver version: {nvidia_driver_version}")
+def main():
+    print(f"Python version: {get_python_version()}")
+    print(f"TensorFlow version: {get_tensorflow_version()}")
+    print(f"CUDA version: {get_cuda_version()}")
+    print(get_cudnn_version())
+    print(f"NVIDIA Driver version: {get_nvidia_driver_version()}")
+
+
+if __name__ == "__main__":
+    main()
