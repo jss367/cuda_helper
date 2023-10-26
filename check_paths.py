@@ -45,23 +45,60 @@ def get_conda_envs():
         return []
 
 
-def main():
-    env_vars = ["PATH", "LD_LIBRARY_PATH"]
-    print("Fetching system-wide environment variables...")
-    system_vals = {var: get_env_var_from_system(var) for var in env_vars}
+def fetch_env_vars_for_conda_env(env):
+    env_path = subprocess.getoutput(f"conda info --envs | grep {env}").split()[1]
+    path_var = subprocess.getoutput(f"echo {env_path}/bin:${{PATH}}")
+    ld_library_path_var = subprocess.getoutput(f"echo {env_path}/lib:${{LD_LIBRARY_PATH}}")
+    return path_var, ld_library_path_var
 
-    print("\nFetching conda environments...")
+
+def fetch_system_env_var(var_name):
+    return os.environ.get(var_name, "")
+
+
+def compare_and_print(var_name, sys_var, env_var, env_name):
+    if sys_var == env_var:
+        print(f"[{env_name}] {var_name}: {env_var}")
+    else:
+        print(f"\033[91m[{env_name}] {var_name}: {env_var}\033[0m")  # \033[91m is the ANSI code for red color
+
+
+def main():
+    print("Fetching system-wide environment variables...")
+    sys_path = fetch_system_env_var("PATH")
+    sys_ld_library_path = fetch_system_env_var("LD_LIBRARY_PATH")
+
+    print(f"[System] PATH: {sys_path}")
+    print(f"[System] LD_LIBRARY_PATH: {sys_ld_library_path}\n")
+
+    print("Fetching conda environments...")
     conda_envs = get_conda_envs()
 
     for env in conda_envs:
         print(f"\nChecking Conda environment: {env}")
-        for var in env_vars:
-            conda_val = get_env_var_from_conda_env(env, var)
-            if system_vals[var] != conda_val:
-                print(f"\033[91mDifference detected in {var} for environment {env}\033[0m")  # Red text
-            else:
-                print(f"{var} in {env} matches system value.")
-        print("\n")
+        env_path, env_ld_library_path = fetch_env_vars_for_conda_env(env)
+
+        compare_and_print("PATH", sys_path, env_path, env)
+        compare_and_print("LD_LIBRARY_PATH", sys_ld_library_path, env_ld_library_path, env)
+
+
+# def main():
+#     env_vars = ["PATH", "LD_LIBRARY_PATH"]
+#     print("Fetching system-wide environment variables...")
+#     system_vals = {var: get_env_var_from_system(var) for var in env_vars}
+
+#     print("\nFetching conda environments...")
+#     conda_envs = get_conda_envs()
+
+#     for env in conda_envs:
+#         print(f"\nChecking Conda environment: {env}")
+#         for var in env_vars:
+#             conda_val = get_env_var_from_conda_env(env, var)
+#             if system_vals[var] != conda_val:
+#                 print(f"\033[91mDifference detected in {var} for environment {env}\033[0m")  # Red text
+#             else:
+#                 print(f"{var} in {env} matches system value.")
+#         print("\n")
 
 
 if __name__ == "__main__":

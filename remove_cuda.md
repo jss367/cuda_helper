@@ -1,4 +1,4 @@
-#!/bin/bash
+Here are some instructions for removing CUDA.
 
 echo "Starting CUDA removal..."
 
@@ -7,17 +7,43 @@ sudo apt-get --purge remove cuda
 sudo apt autoremove
 sudo apt autoclean
 
-# Remove NVIDIA drivers
-# sudo apt-get --purge remove 'nvidia*'
-# sudo apt-get autoremove
-
 # Remove CUDA directories
 sudo rm -rf /usr/local/cuda*
 
 echo "CUDA removal process complete. You might want to reboot your system for changes to take effect."
 
 
+
+# Remove from env:
+
+conda list | grep cuda
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Additional checks after removal
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Check for NVIDIA-related packages
 echo "Checking for NVIDIA-related packages..."

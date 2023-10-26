@@ -9,8 +9,8 @@ def find_cuda_versions():
     try:
         output = subprocess.check_output(cmd, shell=True).decode("utf-8").strip()
         if output:
-            versions = [os.path.basename(path) for path in output.split("\n")]
-            return versions
+            paths = output.split("\n")
+            return paths
         else:
             return None
     except Exception as e:
@@ -19,11 +19,11 @@ def find_cuda_versions():
 
 
 def main():
-    versions = find_cuda_versions()
-    if versions:
+    paths = find_cuda_versions()
+    if paths:
         print("Found the following CUDA versions:")
-        for version in versions:
-            print(version)
+        for path in paths:
+            print(f"{os.path.basename(path)} at {path}")
     else:
         print("No CUDA versions found!")
 
