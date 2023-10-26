@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 
@@ -43,12 +44,30 @@ def get_nvidia_driver_version():
     return get_version_via_command("nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits")
 
 
+def get_tf_gpu_availability():
+    return len(tf.config.experimental.list_physical_devices("GPU"))
+
+
+def get_environment_variables():
+    return {"PATH": os.getenv("PATH"), "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH")}
+
+
+def get_conda_installed_libraries():
+    return get_version_via_command("conda list | grep cuda")
+
+
 def main():
     print(f"Python version: {get_python_version()}")
     print(f"TensorFlow version: {get_tensorflow_version()}")
+    print(f"TensorFlow GPU available: {get_tf_gpu_availability()} GPUs found.")
     print(f"CUDA version: {get_cuda_version()}")
     print(get_cudnn_version())
     print(f"NVIDIA Driver version: {get_nvidia_driver_version()}")
+    env_vars = get_environment_variables()
+    print(f"PATH: {env_vars['PATH']}")
+    print(f"LD_LIBRARY_PATH: {env_vars['LD_LIBRARY_PATH']}")
+    print("Conda installed CUDA-related libraries:")
+    print(get_conda_installed_libraries())
 
 
 if __name__ == "__main__":

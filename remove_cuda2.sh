@@ -8,8 +8,8 @@ sudo apt autoremove
 sudo apt autoclean
 
 # Remove NVIDIA drivers
-sudo apt-get --purge remove 'nvidia*'
-sudo apt-get autoremove
+# sudo apt-get --purge remove 'nvidia*'
+# sudo apt-get autoremove
 
 # Remove CUDA directories
 sudo rm -rf /usr/local/cuda*
