@@ -2,7 +2,10 @@ import os
 import subprocess
 
 
-def find_cudnn_versions():
+def find_cudnn_versions_unix():
+    """
+    This is unix only
+    """
     # Using 'find' command to search for cudnn.h files throughout the system
     cmd_find_cudnn = "find /usr/ -type f -name 'cudnn.h' 2>/dev/null"
 
@@ -30,7 +33,7 @@ def find_cudnn_versions():
 
 
 def main():
-    versions = find_cudnn_versions()
+    versions = find_cudnn_versions_unix()
     if versions:
         print("Found the following cuDNN versions:")
         for path, version in versions.items():

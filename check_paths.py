@@ -45,7 +45,10 @@ def get_conda_envs():
         return []
 
 
-def fetch_env_vars_for_conda_env(env):
+def fetch_env_vars_for_conda_env_unix(env):
+    """
+    This is a Unix-only command
+    """
     env_path = subprocess.getoutput(f"conda info --envs | grep {env}").split()[1]
     path_var = subprocess.getoutput(f"echo {env_path}/bin:${{PATH}}")
     ld_library_path_var = subprocess.getoutput(f"echo {env_path}/lib:${{LD_LIBRARY_PATH}}")
@@ -76,7 +79,7 @@ def main():
 
     for env in conda_envs:
         print(f"\nChecking Conda environment: {env}")
-        env_path, env_ld_library_path = fetch_env_vars_for_conda_env(env)
+        env_path, env_ld_library_path = fetch_env_vars_for_conda_env_unix(env)
 
         compare_and_print("PATH", sys_path, env_path, env)
         compare_and_print("LD_LIBRARY_PATH", sys_ld_library_path, env_ld_library_path, env)
