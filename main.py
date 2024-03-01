@@ -3,8 +3,6 @@ import platform
 import subprocess
 import sys
 
-import tensorflow as tf
-
 
 def get_version_via_command(cmd):
     try:
@@ -18,22 +16,52 @@ def get_python_version():
 
 
 def get_tensorflow_version():
-    return tf.__version__
+    try:
+        import tensorflow as tf
 
-
-def get_cuda_version_unix():
-    return get_version_via_command("nvcc --version | grep release | awk '{print $6}' | cut -c2-")
-
-
-def get_cuda_version_windows():
-    release_str = get_version_via_command("powershell \"nvcc --version | Select-String 'release'")
-    release_splits = release_str.split(" ")
-    release_index = release_splits.index("release")
-    version = release_splits[release_index + 1]
+        version = tf.__version__
+    except ModuleNotFoundError:
+        version = "Not Found"
     return version
 
 
-def get_cudnn_version():
+def get_pytorch_version():
+    try:
+        import torch
+
+        version = torch.__version__
+    except ModuleNotFoundError:
+        version = "Not Found"
+    return version
+
+
+def get_cuda_version_unix():
+    try:
+        version = get_version_via_command("nvcc --version | grep release | awk '{print $6}' | cut -c2-")
+        success = True
+    except Exception:
+        version = "Not Found"
+        success = False
+    return version, success
+
+
+def get_cuda_version_windows():
+    """
+    Would be better to propagate this error message
+    """
+    try:
+        release_str = get_version_via_command("powershell \"nvcc --version | Select-String 'release'")
+        release_splits = release_str.split(" ")
+        release_index = release_splits.index("release")
+        version = release_splits[release_index + 1]
+        success = True
+    except Exception:
+        version = "Not Found"
+        success = False
+    return version, success
+
+
+def get_cudnn_version_unix():
     cudnn_path = get_version_via_command("find /usr/ -name 'cudnn.h'")
     if "No such file or directory" not in cudnn_path:
         cmd = f"grep CUDNN_MAJOR -A 2 {cudnn_path}"
@@ -54,7 +82,13 @@ def get_nvidia_driver_version():
 
 
 def get_tf_gpu_availability():
-    return len(tf.config.experimental.list_physical_devices("GPU"))
+    try:
+        import tensorflow as tf
+
+        num_gpus = len(tf.config.experimental.list_physical_devices("GPU"))
+    except ModuleNotFoundError:
+        num_gpus = 0
+    return num_gpus
 
 
 def get_environment_variables():
@@ -95,15 +129,15 @@ def main():
         print_colored("TensorFlow GPU available: No GPUs found.\n", "red")
 
     if operating_system == "Windows":
-        cuda_version = get_cuda_version_windows()
+        cuda_version, cuda_success = get_cuda_version_windows()
     else:
-        cuda_version = get_cuda_version_unix()
-    if cuda_version:
+        cuda_version, cuda_success = get_cuda_version_unix()
+    if cuda_success:
         print_colored(f"CUDA version: {cuda_version}\n", "green")
     else:
         print_colored("CUDA version: Not found\n", "red")
 
-    cudnn_version = get_cudnn_version()
+    cudnn_version = get_cudnn_version_unix()
     if cudnn_version:
         print_colored(cudnn_version, "green")
     else:
