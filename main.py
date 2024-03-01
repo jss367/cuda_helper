@@ -20,7 +20,7 @@ def get_tensorflow_version():
         import tensorflow as tf
 
         version = tf.__version__
-    except ModuleNotFoundError:
+    except ImportError:
         version = "Not Found"
     return version
 
@@ -30,7 +30,7 @@ def get_pytorch_version():
         import torch
 
         version = torch.__version__
-    except ModuleNotFoundError:
+    except ImportError:
         version = "Not Found"
     return version
 
@@ -86,7 +86,7 @@ def get_tf_gpu_availability():
         import tensorflow as tf
 
         num_gpus = len(tf.config.experimental.list_physical_devices("GPU"))
-    except ModuleNotFoundError:
+    except ImportError:
         num_gpus = 0
     return num_gpus
 
