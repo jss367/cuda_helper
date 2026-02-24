@@ -18,12 +18,23 @@ def find_cuda_versions():
         return None
 
 
+def print_red(text):
+    # ANSI escape code to print in red
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    print(RED + text + RESET)
+
+
 def main():
     paths = find_cuda_versions()
     if paths:
         print("Found the following CUDA versions:")
         for path in paths:
             print(f"{os.path.basename(path)} at {path}")
+
+        # Check for multiple CUDA versions
+        if len(paths) > 1:
+            print_red("\nAlert: Multiple CUDA versions detected. This may cause conflicts.")
     else:
         print("No CUDA versions found!")
 
