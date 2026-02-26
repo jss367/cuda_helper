@@ -59,6 +59,23 @@ def get_pytorch_gpu_availability():
         return {"available": False, "device_count": 0, "devices": []}
 
 
+def get_pytorch_mps_availability():
+    # Run in subprocess to avoid import conflicts
+    script = (
+        "import json, torch; "
+        "b = torch.backends.mps.is_built(); "
+        "a = torch.backends.mps.is_available() if b else False; "
+        "print(json.dumps({'available': a, 'is_built': b}))"
+    )
+    try:
+        output = subprocess.check_output(
+            [sys.executable, "-c", script], stderr=subprocess.DEVNULL, timeout=30
+        ).decode("utf-8").strip()
+        return json.loads(output)
+    except Exception:
+        return {"available": False, "is_built": False}
+
+
 def get_jax_info():
     # Run in subprocess to avoid CUDA conflicts with other frameworks
     script = (
@@ -155,6 +172,32 @@ def get_gpu_info():
                 "utilization_pct": parts[2],
                 "temperature_c": parts[3],
             })
+    return gpus
+
+
+def get_apple_gpu_info():
+    try:
+        output = subprocess.check_output(
+            ["system_profiler", "SPDisplaysDataType"], stderr=subprocess.DEVNULL, timeout=15
+        ).decode("utf-8")
+    except Exception:
+        return []
+    gpus = []
+    current = {}
+    for line in output.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("Chipset Model:"):
+            if current:
+                gpus.append(current)
+            current = {"name": stripped.split(":", 1)[1].strip()}
+        elif stripped.startswith("Total Number of Cores:") and current:
+            current["cores"] = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("VRAM") and current:
+            current["memory"] = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("Memory:") and "memory" not in current and current:
+            current["memory"] = stripped.split(":", 1)[1].strip()
+    if current:
+        gpus.append(current)
     return gpus
 
 
@@ -380,6 +423,19 @@ def main():
             print_colored("PyTorch GPU available: No GPUs found.\n", "red")
     health_checks.append(("PyTorch GPU", "PASS" if pytorch_gpu["available"] else "WARN"))
 
+    # 3b. PyTorch MPS availability (macOS Apple Silicon)
+    if operating_system == "Darwin":
+        pytorch_mps = get_pytorch_mps_availability()
+        data["pytorch_mps"] = pytorch_mps
+        if not args.json_mode:
+            if pytorch_mps["available"]:
+                print_colored("PyTorch MPS (Apple Silicon GPU): Available\n", "green")
+            elif pytorch_mps["is_built"]:
+                print_colored("PyTorch MPS (Apple Silicon GPU): Built but not available\n", "yellow")
+            else:
+                print_colored("PyTorch MPS (Apple Silicon GPU): Not available\n", "red")
+        health_checks.append(("PyTorch MPS", "PASS" if pytorch_mps["available"] else "WARN"))
+
     # 4. JAX version + GPU availability
     jax_info = get_jax_info()
     data["jax"] = jax_info
@@ -440,6 +496,10 @@ def main():
     # 9. GPU hardware info
     gpu_info = get_gpu_info()
     data["gpus"] = gpu_info
+    apple_gpus = []
+    if not gpu_info and operating_system == "Darwin":
+        apple_gpus = get_apple_gpu_info()
+        data["apple_gpus"] = apple_gpus
     if not args.json_mode:
         if gpu_info:
             print_colored("GPU Hardware Info:\n", "green")
@@ -449,6 +509,16 @@ def main():
                     f"Utilization: {gpu['utilization_pct']}% | Temp: {gpu['temperature_c']}°C",
                     "green",
                 )
+            print()
+        elif apple_gpus:
+            print_colored("Apple GPU Hardware Info:\n", "green")
+            for i, gpu in enumerate(apple_gpus):
+                parts = [gpu["name"]]
+                if "cores" in gpu:
+                    parts.append(f"Cores: {gpu['cores']}")
+                if "memory" in gpu:
+                    parts.append(f"Memory: {gpu['memory']}")
+                print_colored(f"  GPU {i}: {' | '.join(parts)}", "green")
             print()
         else:
             print_colored("GPU Hardware Info: Not available\n", "red")
