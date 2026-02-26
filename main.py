@@ -9,8 +9,8 @@ import sys
 def get_version_via_command(cmd):
     try:
         return subprocess.check_output(cmd, shell=True, stderr=subprocess.DEVNULL).decode("utf-8").strip()
-    except Exception as e:
-        return str(e)
+    except Exception:
+        return None
 
 
 def get_python_version():
@@ -117,7 +117,10 @@ def get_cudnn_version_unix():
     if not cudnn_path:
         return None
     cmd = f"grep CUDNN_MAJOR -A 2 {cudnn_path}"
-    cudnn_version_info = get_version_via_command(cmd).split("\n")
+    cudnn_version_info = get_version_via_command(cmd)
+    if not cudnn_version_info:
+        return None
+    cudnn_version_info = cudnn_version_info.split("\n")
     if len(cudnn_version_info) >= 3:
         return (
             "cuDNN version:"
@@ -426,7 +429,7 @@ def main():
 
     # 8. NVIDIA driver version
     nvidia_driver_version = get_nvidia_driver_version()
-    data["nvidia_driver_version"] = nvidia_driver_version if nvidia_driver_version and "error" not in nvidia_driver_version.lower() else None
+    data["nvidia_driver_version"] = nvidia_driver_version
     if not args.json_mode:
         if data["nvidia_driver_version"]:
             print_colored(f"NVIDIA Driver version: {data['nvidia_driver_version']}\n", "green")
