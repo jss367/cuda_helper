@@ -38,7 +38,7 @@ def get_pytorch_version():
 def get_cuda_version_unix():
     try:
         version = get_version_via_command("nvcc --version | grep release | awk '{print $6}' | cut -c2-")
-        success = True
+        success = bool(version and "not found" not in version.lower() and "error" not in version.lower())
     except Exception:
         version = "Not Found"
         success = False
@@ -62,23 +62,30 @@ def get_cuda_version_windows():
 
 
 def get_cudnn_version_unix():
-    cudnn_path = get_version_via_command("find /usr/ -name 'cudnn.h'")
-    if "No such file or directory" not in cudnn_path:
-        cmd = f"grep CUDNN_MAJOR -A 2 {cudnn_path}"
-        cudnn_version_info = get_version_via_command(cmd).split("\n")
-        if len(cudnn_version_info) >= 3:
-            return (
-                "cuDNN version:"
-                f" {cudnn_version_info[0].split()[-1]}.{cudnn_version_info[1].split()[-1]}.{cudnn_version_info[2].split()[-1]}"
-            )
-        else:
-            return "Error retrieving cuDNN version details"
+    cudnn_path = get_version_via_command("find /usr/ -name 'cudnn.h' 2>/dev/null")
+    if not cudnn_path or "not found" in cudnn_path.lower() or "error" in cudnn_path.lower() or "permission denied" in cudnn_path.lower():
+        return None
+    # Take only the first result if find returns multiple paths
+    cudnn_path = cudnn_path.split("\n")[0].strip()
+    if not cudnn_path:
+        return None
+    cmd = f"grep CUDNN_MAJOR -A 2 {cudnn_path}"
+    cudnn_version_info = get_version_via_command(cmd).split("\n")
+    if len(cudnn_version_info) >= 3:
+        return (
+            "cuDNN version:"
+            f" {cudnn_version_info[0].split()[-1]}.{cudnn_version_info[1].split()[-1]}.{cudnn_version_info[2].split()[-1]}"
+        )
     else:
-        return "cuDNN not found or permission denied."
+        return None
 
 
 def get_nvidia_driver_version():
-    return get_version_via_command("nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits")
+    output = get_version_via_command("nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits")
+    if output:
+        # Multi-GPU systems return one line per GPU; driver version is the same, so take the first
+        return output.split("\n")[0].strip()
+    return output
 
 
 def get_tf_gpu_availability():
@@ -137,11 +144,14 @@ def main():
     else:
         print_colored("CUDA version: Not found\n", "red")
 
-    cudnn_version = get_cudnn_version_unix()
-    if cudnn_version:
-        print_colored(cudnn_version, "green")
+    if operating_system != "Windows":
+        cudnn_version = get_cudnn_version_unix()
+        if cudnn_version:
+            print_colored(cudnn_version, "green")
+        else:
+            print_colored("cuDNN version: Not found\n", "red")
     else:
-        print_colored("cuDNN version: Not found", "red")
+        print_colored("cuDNN version: Detection not supported on Windows\n", "red")
 
     nvidia_driver_version = get_nvidia_driver_version()
     if nvidia_driver_version:
@@ -151,7 +161,7 @@ def main():
 
     env_vars = get_environment_variables()
     print_colored(f"PATH: {env_vars['PATH']}\n", "green")
-    if "LD_LIBRARY_PATH" in env_vars:
+    if env_vars.get("LD_LIBRARY_PATH"):
         print_colored(f"LD_LIBRARY_PATH: {env_vars['LD_LIBRARY_PATH']}\n", "green")
     else:
         print_colored("LD_LIBRARY_PATH: Not set\n", "red")
