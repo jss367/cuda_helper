@@ -358,7 +358,7 @@ def print_colored(text, color="green"):
         text (str): The text to print.
         color (str): The color to print the text in. Options are "green", "red", or "yellow".
     """
-    colors = {"green": "\033[32m", "red": "\033[31m", "yellow": "\033[33m"}
+    colors = {"green": "\033[32m", "red": "\033[31m", "yellow": "\033[33m", "dim": "\033[90m"}
     color_code = colors.get(color, "\033[32m")
     reset_code = "\033[0m"
     print(f"{color_code}{text}{reset_code}")
@@ -371,6 +371,8 @@ def print_health_summary(checks):
             print_colored(f"  [PASS] {label}", "green")
         elif status == "WARN":
             print_colored(f"  [WARN] {label}", "yellow")
+        elif status == "N/A":
+            print_colored(f"  [ N/A] {label}", "dim")
         else:
             print_colored(f"  [FAIL] {label}", "red")
     print()
@@ -404,7 +406,10 @@ def main():
             print_colored(f"TensorFlow GPU available: {tf_gpu_count} GPUs found.\n", "green")
         else:
             print_colored("TensorFlow GPU available: No GPUs found.\n", "red")
-    health_checks.append(("TensorFlow GPU", "PASS" if tf_gpu_count > 0 else "WARN"))
+    if tf_version == "Not Found":
+        health_checks.append(("TensorFlow GPU", "N/A"))
+    else:
+        health_checks.append(("TensorFlow GPU", "PASS" if tf_gpu_count > 0 else "WARN"))
 
     # 3. PyTorch version + GPU availability
     pytorch_version = get_pytorch_version()
@@ -421,7 +426,12 @@ def main():
             )
         else:
             print_colored("PyTorch GPU available: No GPUs found.\n", "red")
-    health_checks.append(("PyTorch GPU", "PASS" if pytorch_gpu["available"] else "WARN"))
+    if pytorch_version == "Not Found":
+        health_checks.append(("PyTorch GPU", "N/A"))
+    elif operating_system == "Darwin":
+        health_checks.append(("PyTorch GPU", "N/A"))
+    else:
+        health_checks.append(("PyTorch GPU", "PASS" if pytorch_gpu["available"] else "WARN"))
 
     # 3b. PyTorch MPS availability (macOS Apple Silicon)
     if operating_system == "Darwin":
@@ -434,7 +444,10 @@ def main():
                 print_colored("PyTorch MPS (Apple Silicon GPU): Built but not available\n", "yellow")
             else:
                 print_colored("PyTorch MPS (Apple Silicon GPU): Not available\n", "red")
-        health_checks.append(("PyTorch MPS", "PASS" if pytorch_mps["available"] else "WARN"))
+        if pytorch_version == "Not Found":
+            health_checks.append(("PyTorch MPS", "N/A"))
+        else:
+            health_checks.append(("PyTorch MPS", "PASS" if pytorch_mps["available"] else "WARN"))
 
     # 4. JAX version + GPU availability
     jax_info = get_jax_info()
@@ -457,7 +470,10 @@ def main():
             print_colored(f"CUDA version (nvcc): {cuda_version}\n", "green")
         else:
             print_colored("CUDA version (nvcc): Not found\n", "red")
-    health_checks.append(("CUDA nvcc", "PASS" if cuda_success else "FAIL"))
+    if operating_system == "Darwin":
+        health_checks.append(("CUDA nvcc", "N/A"))
+    else:
+        health_checks.append(("CUDA nvcc", "PASS" if cuda_success else "FAIL"))
 
     # 6. CUDA version (nvidia-smi)
     cuda_smi_version = get_cuda_version_from_nvidia_smi()
@@ -467,7 +483,10 @@ def main():
             print_colored(f"CUDA version (nvidia-smi): {cuda_smi_version}\n", "green")
         else:
             print_colored("CUDA version (nvidia-smi): Not found\n", "red")
-    health_checks.append(("CUDA nvidia-smi", "PASS" if cuda_smi_version else "FAIL"))
+    if operating_system == "Darwin":
+        health_checks.append(("CUDA nvidia-smi", "N/A"))
+    else:
+        health_checks.append(("CUDA nvidia-smi", "PASS" if cuda_smi_version else "FAIL"))
 
     # 7. cuDNN version
     if operating_system != "Windows":
@@ -491,7 +510,10 @@ def main():
             print_colored(f"NVIDIA Driver version: {data['nvidia_driver_version']}\n", "green")
         else:
             print_colored("NVIDIA Driver version: Not found\n", "red")
-    health_checks.append(("NVIDIA Driver", "PASS" if data["nvidia_driver_version"] else "FAIL"))
+    if operating_system == "Darwin":
+        health_checks.append(("NVIDIA Driver", "N/A"))
+    else:
+        health_checks.append(("NVIDIA Driver", "PASS" if data["nvidia_driver_version"] else "FAIL"))
 
     # 9. GPU hardware info
     gpu_info = get_gpu_info()
